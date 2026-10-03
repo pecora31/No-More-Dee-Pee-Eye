@@ -14,7 +14,7 @@ No More Dee Pee Eye does not change DNS, proxy, firewall, or IP settings. The cu
 
 ## Download and run
 
-Download `NoMoreDeePeeEye-0.1.1-windows-x64.zip` from the GitHub release, extract the entire archive, and run `NoMoreDeePeeEye.exe`. Keep the `runtime` directory next to the executable.
+Download `NoMoreDeePeeEye-0.1.2-windows-x64.zip` from the GitHub release, extract the entire archive, and run `NoMoreDeePeeEye.exe`. Keep the `runtime` directory next to the executable.
 
 1. Open **Configuration** and enter domains, one per line.
 2. Select a TLS profile and save it.

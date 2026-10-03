@@ -12,6 +12,6 @@ try {
     Copy-Item -Path 'runtime\*' -Destination (Join-Path $output 'runtime') -Recurse -Force
     Copy-Item -LiteralPath 'README.md','THIRD-PARTY-NOTICES.md','engine-manifest.json','LICENSE' -Destination $output -Force
     Copy-Item -LiteralPath 'ui\fonts\INTER-OFL.txt' -Destination (Join-Path $output 'FONT-LICENSE.txt') -Force
-    Compress-Archive -Path "$output\*" -DestinationPath (Join-Path $workspace 'dist\NoMoreDeePeeEye-0.1.1-windows-x64.zip') -Force
-    Get-Item -LiteralPath (Join-Path $output 'NoMoreDeePeeEye.exe'),(Join-Path $workspace 'dist\NoMoreDeePeeEye-0.1.1-windows-x64.zip') | Select-Object FullName,Length
+    Compress-Archive -Path "$output\*" -DestinationPath (Join-Path $workspace 'dist\NoMoreDeePeeEye-0.1.2-windows-x64.zip') -Force
+    Get-Item -LiteralPath (Join-Path $output 'NoMoreDeePeeEye.exe'),(Join-Path $workspace 'dist\NoMoreDeePeeEye-0.1.2-windows-x64.zip') | Select-Object FullName,Length
 } finally { Pop-Location }

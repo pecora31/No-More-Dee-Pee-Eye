@@ -60,15 +60,17 @@ fn notice(ui: &AppWindow, text: impl Into<slint::SharedString>, error: bool) {
 }
 
 pub(crate) fn restore_window(ui: &AppWindow) {
-    ui.window().set_minimized(false);
-    let _ = ui.show();
-    ui.window().request_redraw();
+    if ui.window().is_minimized() {
+        ui.window().set_minimized(false);
+    }
+    if !ui.window().is_visible() {
+        let _ = ui.show();
+    }
 
-    // Winit may restore a minimized software-rendered window before its first
-    // paint request is processed. Queue a second paint once restoration has
-    // reached the event loop to avoid a blank client area.
+    // A minimized native surface must be painted again after Windows restores
+    // it. Queue one paint after the restore event, without rebuilding the UI.
     let weak = ui.as_weak();
-    slint::Timer::single_shot(Duration::from_millis(50), move || {
+    slint::Timer::single_shot(Duration::ZERO, move || {
         if let Some(ui) = weak.upgrade() {
             ui.window().request_redraw();
         }
@@ -366,7 +368,7 @@ pub fn run(
         if let Some(ui) = weak.upgrade() {
             let output = export_dir.join("diagnostics.txt");
             let text = format!(
-                "No More Dee Pee Eye 0.1.1\nEngine bundle: {}\nPreset: {}\n{}\n\n{}\n",
+                "No More Dee Pee Eye 0.1.2\nEngine bundle: {}\nPreset: {}\n{}\n\n{}\n",
                 engine::REVISION,
                 ui.get_profile_name(),
                 ui.get_probe_result(),
@@ -406,12 +408,16 @@ pub fn run(
     let quit_event = platform::quit_event();
     let timer = slint::Timer::default();
     let was_minimized = Rc::new(RefCell::new(ui.window().is_minimized()));
+    let last_profile = Rc::new(RefCell::new(-1));
+    let last_uptime_second = Rc::new(RefCell::new(None::<u64>));
     let weak = ui.as_weak();
     let log_data = logs.clone();
     let minimize_state = was_minimized.clone();
+    let profile_state = last_profile.clone();
+    let uptime_state = last_uptime_second.clone();
     timer.start(
         slint::TimerMode::Repeated,
-        Duration::from_millis(100),
+        Duration::from_millis(250),
         move || {
             if let Some(ui) = weak.upgrade() {
                 if show_event.as_ref().is_some_and(platform::show_requested) {
@@ -425,13 +431,17 @@ pub fn run(
                     restore_window(&ui);
                 }
                 *minimize_state.borrow_mut() = minimized;
-                ui.set_profile_name(
-                    PROFILE_NAMES
-                        .get(ui.get_profile() as usize)
-                        .unwrap_or(&PROFILE_NAMES[0])
-                        .to_string()
-                        .into(),
-                );
+                let profile = ui.get_profile();
+                if *profile_state.borrow() != profile {
+                    ui.set_profile_name(
+                        PROFILE_NAMES
+                            .get(profile as usize)
+                            .unwrap_or(&PROFILE_NAMES[0])
+                            .to_string()
+                            .into(),
+                    );
+                    *profile_state.borrow_mut() = profile;
+                }
                 let mut log_changed = false;
                 for update in update_rx.try_iter().take(64) {
                     match update {
@@ -514,16 +524,18 @@ pub fn run(
                     }
                     ui.set_logs(lines.iter().cloned().collect::<Vec<_>>().join("\n").into());
                 }
-                ui.set_uptime(
-                    match *session_started.borrow() {
-                        Some(start) => {
-                            let secs = start.elapsed().as_secs();
-                            format!("{:02}:{:02}:{:02}", secs / 3600, secs / 60 % 60, secs % 60)
-                        }
-                        None => "—".into(),
-                    }
-                    .into(),
-                );
+                let uptime_seconds = session_started
+                    .borrow()
+                    .as_ref()
+                    .map(|start| start.elapsed().as_secs());
+                if *uptime_state.borrow() != uptime_seconds {
+                    let uptime = uptime_seconds.map_or_else(
+                        || "—".to_string(),
+                        |secs| format!("{:02}:{:02}:{:02}", secs / 3600, secs / 60 % 60, secs % 60),
+                    );
+                    ui.set_uptime(uptime.into());
+                    *uptime_state.borrow_mut() = uptime_seconds;
+                }
             }
         },
     );
@@ -560,11 +572,11 @@ pub fn run(
                         assert!(!ui.window().is_visible());
                         *page += 1;
                     } else if *page == 5 {
-                        ui.show().expect("show after hide");
+                        restore_window(&ui);
                         assert!(ui.window().is_visible());
                         fs::write(
                             folder.join("tray-smoke.txt"),
-                            "PASS: tray created; hide and reopen preserved the event loop.\n",
+                            "PASS: tray created; restore queued one redraw and preserved the event loop.\n",
                         )
                         .expect("write tray report");
                         *page += 1;

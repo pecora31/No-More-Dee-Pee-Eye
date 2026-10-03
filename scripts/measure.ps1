@@ -32,7 +32,7 @@ try {
         hiddenCpuPercentOfOneLogicalCore = [math]::Round($cpu, 3)
         sampleSeconds = [math]::Round($watch.Elapsed.TotalSeconds, 2)
         executableMiB = [math]::Round((Get-Item -LiteralPath $exe).Length / 1MB, 2)
-        zipMiB = [math]::Round((Get-Item -LiteralPath (Join-Path $workspace 'dist\NoMoreDeePeeEye-0.1.1-windows-x64.zip')).Length / 1MB, 2)
+        zipMiB = [math]::Round((Get-Item -LiteralPath (Join-Path $workspace 'dist\NoMoreDeePeeEye-0.1.2-windows-x64.zip')).Length / 1MB, 2)
     }
     New-Item -ItemType Directory -Force -Path (Join-Path $workspace 'artifacts') | Out-Null
     $result | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $workspace 'artifacts\performance.json') -Encoding utf8

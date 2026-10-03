@@ -27,7 +27,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: NoMoreDeePeeEye-windows-x64
-          path: dist/NoMoreDeePeeEye-0.1.1-windows-x64.zip
+          path: dist/NoMoreDeePeeEye-0.1.2-windows-x64.zip
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -41,4 +41,4 @@ jobs:
       - uses: softprops/action-gh-release@v2
         with:
           generate_release_notes: true
-          files: release/NoMoreDeePeeEye-0.1.1-windows-x64.zip
+          files: release/NoMoreDeePeeEye-0.1.2-windows-x64.zip
