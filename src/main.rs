@@ -13,6 +13,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         platform::quit_existing();
         return Ok(());
     }
+    engine::ensure_runtime()?;
     if args.get(1).map(String::as_str) == Some("--smoke-engine") {
         return verification::engine_smoke(std::path::Path::new(
             args.get(2).ok_or("missing report path")?,

@@ -14,7 +14,7 @@ No More Dee Pee Eye does not change DNS, proxy, firewall, or IP settings. The cu
 
 ## Download and run
 
-Download `NoMoreDeePeeEye-0.1.2-windows-x64.zip` from the GitHub release, extract the entire archive, and run `NoMoreDeePeeEye.exe`. Keep the `runtime` directory next to the executable.
+Download and run `NoMoreDeePeeEye-0.1.3-windows-x64.exe` from the GitHub release. It contains the pinned Zapret2 runtime and prepares it locally on its first launch. A ZIP is also available for people who prefer a portable folder.
 
 1. Open **Configuration** and enter domains, one per line.
 2. Select a TLS profile and save it.

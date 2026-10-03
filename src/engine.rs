@@ -1,4 +1,5 @@
 use crate::{
+    config,
     config::Settings,
     platform,
     protocol::{self, Event, Request},
@@ -7,13 +8,17 @@ use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use std::{
     fs,
-    io::Read,
+    io::{Read, Write},
     os::windows::{fs::OpenOptionsExt, process::CommandExt},
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     sync::mpsc,
     time::{Duration, Instant},
 };
+
+mod bundled_runtime {
+    include!(concat!(env!("OUT_DIR"), "/bundled_runtime.rs"));
+}
 
 pub const REVISION: &str = "6eb463a6758fb48cd101bc55dfd057e6e9d98af1";
 #[derive(Deserialize)]
@@ -22,11 +27,62 @@ struct Entry {
     sha256: String,
 }
 pub fn runtime_dir() -> PathBuf {
-    std::env::current_exe()
+    let alongside = std::env::current_exe()
         .unwrap_or_default()
         .parent()
         .unwrap_or(Path::new("."))
-        .join("runtime")
+        .join("runtime");
+    if alongside.join("winws2.exe").is_file() {
+        alongside
+    } else {
+        config::data_dir().join("runtime").join(REVISION)
+    }
+}
+
+pub fn ensure_runtime() -> Result<(), String> {
+    let root = runtime_dir();
+    if root.join("winws2.exe").is_file() {
+        return Ok(());
+    }
+    for (relative, bytes) in [
+        ("winws2.exe", bundled_runtime::WINWS2),
+        ("cygwin1.dll", bundled_runtime::CYGWIN),
+        ("WinDivert.dll", bundled_runtime::WINDIVERT),
+        ("WinDivert64.sys", bundled_runtime::WINDIVERT_DRIVER),
+        ("lua/zapret-lib.lua", bundled_runtime::ZAPRET_LIB),
+        ("lua/zapret-antidpi.lua", bundled_runtime::ZAPRET_ANTIDPI),
+    ] {
+        write_bundled_file(&root.join(relative), bytes)?;
+    }
+    verify_runtime(&root)
+}
+
+fn write_bundled_file(path: &Path, bytes: &[u8]) -> Result<(), String> {
+    if let Ok(existing) = fs::read(path)
+        && Sha256::digest(&existing).as_slice() == Sha256::digest(bytes).as_slice()
+    {
+        return Ok(());
+    }
+    let parent = path
+        .parent()
+        .ok_or_else(|| "Đường dẫn runtime không hợp lệ.".to_string())?;
+    fs::create_dir_all(parent).map_err(|e| format!("Không tạo được runtime: {e}"))?;
+    let temporary = path.with_extension(format!("tmp-{}", std::process::id()));
+    let mut file =
+        fs::File::create(&temporary).map_err(|e| format!("Không ghi được runtime: {e}"))?;
+    file.write_all(bytes)
+        .and_then(|_| file.sync_all())
+        .map_err(|e| format!("Không ghi được runtime: {e}"))?;
+    fs::rename(&temporary, path)
+        .or_else(|_| {
+            if path.is_file() {
+                let _ = fs::remove_file(&temporary);
+                Ok(())
+            } else {
+                Err(std::io::Error::other("không thay thế được runtime"))
+            }
+        })
+        .map_err(|e| format!("Không cài được runtime: {e}"))
 }
 pub fn verify_runtime(root: &Path) -> Result<(), String> {
     lock_runtime(root).map(|_| ())
