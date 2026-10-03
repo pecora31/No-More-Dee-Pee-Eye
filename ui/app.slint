@@ -1,0 +1,132 @@
+import { LineEdit, TextEdit, ScrollView, Palette as WidgetPalette } from "std-widgets.slint";
+import "fonts/Inter.ttf";
+
+global Palette {
+    out property <color> base: #101010;
+    out property <color> sidebar: #070707;
+    out property <color> panel: #171717;
+    out property <color> input: #1c1c1e;
+    out property <color> border: #303034;
+    out property <color> text: #f5f5f7;
+    out property <color> muted: #b4b4ba;
+    out property <color> primary: #5b9dff;
+}
+component Label inherits Text { color: Palette.text; font-size: 15px; vertical-alignment: center; }
+component Muted inherits Label { color: Palette.muted; font-size: 13px; }
+component Action inherits Rectangle {
+    in property <string> text; in property <bool> primary: false; in property <bool> enabled: true; callback clicked;
+    forward-focus: keyboard; accessible-role: button; accessible-label: root.text; accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    height: 42px; min-width: max(118px, label.preferred-width + 32px); horizontal-stretch: 0; border-radius: 8px; border-width: 1px;
+    border-color: keyboard.has-focus ? #ffffff : root.primary ? Palette.primary : Palette.border;
+    background: touch.has-hover && enabled ? (root.primary ? #71abff : #2a2a2e) : (root.primary ? Palette.primary : #202024); opacity: enabled ? 1 : 0.42;
+    label := Label { text: root.text; horizontal-alignment: center; color: root.primary ? #ffffff : Palette.text; font-weight: 600; }
+    touch := TouchArea { enabled: root.enabled; mouse-cursor: pointer; clicked => { root.clicked(); } }
+    keyboard := FocusScope { width: 0; enabled: root.enabled; key-pressed(event) => { if (event.text == " " || event.text == "\n") { root.clicked(); return accept; } return reject; } }
+}
+component NavItem inherits Rectangle {
+    in property <string> text; in property <bool> selected; callback clicked;
+    forward-focus: keyboard; accessible-role: button; accessible-label: root.text; accessible-action-default => { root.clicked(); }
+    height: 40px; border-radius: 8px; border-width: keyboard.has-focus ? 1px : 0px; border-color: #ffffff;
+    background: root.selected ? #2b2b2d : touch.has-hover ? #202022 : transparent;
+    Label { x: 17px; width: parent.width - 34px; text: root.text; color: root.selected ? #ffffff : #dddddf; font-size: 14px; font-weight: root.selected ? 650 : 500; }
+    touch := TouchArea { mouse-cursor: pointer; clicked => { root.clicked(); } }
+    keyboard := FocusScope { width: 0; key-pressed(event) => { if (event.text == " " || event.text == "\n") { root.clicked(); return accept; } return reject; } }
+}
+component Card inherits Rectangle { background: Palette.panel; border-width: 1px; border-color: Palette.border; border-radius: 10px; }
+component Toggle inherits Rectangle {
+    in property <string> text; in-out property <bool> checked; callback toggled(bool); height: 34px; forward-focus: keyboard;
+    accessible-role: checkbox; accessible-label: root.text; accessible-checkable: true; accessible-checked: root.checked;
+    accessible-action-default => { root.checked = !root.checked; root.toggled(root.checked); }
+    HorizontalLayout { spacing: 14px; Label { text: root.text; }
+        Rectangle { width: 48px; height: 26px; y: 4px; border-radius: 14px; background: root.checked ? Palette.primary : #4a4a4f; border-width: keyboard.has-focus ? 2px : 0px; border-color: #ffffff;
+            Rectangle { x: root.checked ? 24px : 3px; y: 3px; width: 20px; height: 20px; border-radius: 10px; background: #ffffff; }
+        }
+    }
+    TouchArea { mouse-cursor: pointer; clicked => { root.checked = !root.checked; root.toggled(root.checked); } }
+    keyboard := FocusScope { width: 0; key-pressed(event) => { if (event.text == " " || event.text == "\n") { root.checked = !root.checked; root.toggled(root.checked); return accept; } return reject; } }
+}
+component StatusMark inherits Rectangle {
+    in property <bool> active: false; width: 100px; height: 100px; border-radius: 50px; background: #19191b; border-width: 1px; border-color: active ? #6faaff : #3b3b40;
+    Rectangle { x: 12px; y: 12px; width: 76px; height: 76px; border-radius: 38px; border-width: 2px; border-color: root.active ? Palette.primary : #74747c; background: #121214;
+        Label { text: root.active ? "✓" : "×"; font-size: 38px; font-weight: 300; horizontal-alignment: center; color: root.active ? Palette.primary : #e2e2e5; }
+    }
+}
+component Preset inherits Rectangle {
+    in property <string> text; in property <bool> selected; in property <bool> enabled: true; callback clicked;
+    forward-focus: keyboard; accessible-role: button; accessible-label: root.text; accessible-enabled: root.enabled;
+    accessible-action-default => { if (root.enabled) { root.clicked(); } }
+    height: 42px; border-radius: 7px; border-width: 1px; border-color: selected || keyboard.has-focus ? Palette.primary : Palette.border; background: selected ? #252f3e : Palette.input; opacity: enabled ? 1 : 0.45;
+    Label { text: root.text; horizontal-alignment: center; font-size: 14px; font-weight: selected ? 600 : 400; }
+    TouchArea { enabled: root.enabled; mouse-cursor: pointer; clicked => { root.clicked(); } }
+    keyboard := FocusScope { width: 0; enabled: root.enabled; key-pressed(event) => { if (event.text == " " || event.text == "\n") { root.clicked(); return accept; } return reject; } }
+}
+
+export component AppWindow inherits Window {
+    icon: @image-url("icons/umbra.svg"); init => { WidgetPalette.color-scheme = ColorScheme.dark; }
+    title: "No More Dee Pee Eye"; preferred-width: 850px; preferred-height: 620px; min-width: 760px; min-height: 560px; background: Palette.base;
+    default-font-family: "Inter"; default-font-size: 15px;
+    in-out property <int> page: 0; in-out property <int> profile: 0; in-out property <string> domains; in-out property <string> exclusions; in-out property <string> probe-host;
+    in property <bool> running: false; in property <bool> busy: false; in property <bool> probing: false; in property <bool> engine-ready: false;
+    in property <string> state-title: "Đã tắt"; in property <string> state-detail; in property <string> engine-label: "Đang kiểm tra lõi…"; in property <string> probe-result: "Chưa kiểm tra";
+    in property <string> notice: ""; in property <bool> notice-error: false; in-out property <int> notice-serial: 0; in property <string> logs: ""; in property <string> data-path: "";
+    in property <string> uptime: "—"; in property <string> process-id: "—"; in-out property <bool> startup-enabled: false; in property <bool> tray-available: false; in property <string> profile-name: "TLS · Multisplit";
+    callback toggle; callback save; callback probe; callback clear-logs; callback export-logs; callback open-folder; callback reset; callback startup-changed(bool); callback hide-to-tray; callback quit; callback dismiss-notice;
+
+    HorizontalLayout { spacing: 0px;
+        Rectangle { width: 164px; background: Palette.sidebar;
+            VerticalLayout { padding: 14px; spacing: 7px;
+                HorizontalLayout { height: 54px; spacing: 8px; Rectangle { width: 9px; height: 9px; y: 22px; border-radius: 5px; background: Palette.primary; } Label { text: "No More"; font-size: 16px; font-weight: 700; } }
+                Rectangle { height: 1px; background: #29292b; }
+                Rectangle { height: 10px; }
+                NavItem { text: "Trang chủ"; selected: root.page == 0; clicked => { root.page = 0; } }
+                NavItem { text: "Cấu hình"; selected: root.page == 1; clicked => { root.page = 1; } }
+                NavItem { text: "Kiểm tra"; selected: root.page == 2; clicked => { root.page = 2; } }
+                NavItem { text: "Cài đặt"; selected: root.page == 3; clicked => { root.page = 3; } }
+                Rectangle { vertical-stretch: 1; }
+                Muted { text: "Zapret2"; font-size: 12px; height: 20px; }
+            }
+        }
+        Rectangle { width: 1px; background: #2b2b2d; }
+        Rectangle { background: Palette.base;
+            if root.page == 0 : VerticalLayout { padding: 32px; spacing: 12px;
+                Rectangle { vertical-stretch: 1; }
+                HorizontalLayout { height: 100px; Rectangle { horizontal-stretch: 1; } StatusMark { active: root.running; } Rectangle { horizontal-stretch: 1; } }
+                Label { text: root.state-title; font-size: 30px; font-weight: 700; horizontal-alignment: center; height: 42px; }
+                Muted { text: root.running ? "Zapret2 đang áp dụng cấu hình của bạn." : "Zapret2 hiện chưa chạy."; font-size: 16px; horizontal-alignment: center; height: 28px; }
+                HorizontalLayout { height: 42px; Rectangle { horizontal-stretch: 1; } Action { text: root.busy ? "Đang xử lý…" : root.running ? "Ngắt kết nối" : "Kết nối"; primary: true; enabled: !root.busy && root.engine-ready; clicked => { root.toggle(); } } Rectangle { horizontal-stretch: 1; } }
+                Rectangle { height: 18px; }
+                HorizontalLayout { height: 70px; Rectangle { horizontal-stretch: 1; }
+                    VerticalLayout { width: 310px; spacing: 6px; Label { text: "Phương thức"; font-size: 14px; font-weight: 600; } Rectangle { height: 40px; border-radius: 7px; border-width: 1px; border-color: Palette.border; background: Palette.input; Label { x: 13px; width: parent.width - 26px; text: root.profile-name; font-size: 14px; } TouchArea { mouse-cursor: pointer; clicked => { root.page = 1; } } } }
+                    Rectangle { horizontal-stretch: 1; }
+                }
+                Rectangle { vertical-stretch: 1; }
+                Muted { text: "No More Dee Pee Eye  ·  " + root.engine-label; horizontal-alignment: center; font-size: 12px; height: 20px; }
+            }
+            if root.page == 1 : VerticalLayout { padding: 30px; spacing: 16px;
+                Label { text: "Cấu hình"; font-size: 24px; font-weight: 700; height: 34px; }
+                Card { height: 88px; VerticalLayout { padding: 14px; spacing: 8px; Muted { text: "Phương thức TLS"; font-size: 12px; } HorizontalLayout { height: 42px; spacing: 8px; for name[index] in ["Multisplit", "Multidisorder", "Fake + split"] : Preset { text: name; selected: root.profile == index; enabled: !root.running && !root.busy; clicked => { root.profile = index; } } } } }
+                HorizontalLayout { height: 250px; spacing: 14px;
+                    Card { VerticalLayout { padding: 14px; spacing: 8px; Label { text: "Tên miền"; font-weight: 600; } TextEdit { text <=> root.domains; font-size: 15px; enabled: !root.running && !root.busy; } } }
+                    Card { VerticalLayout { padding: 14px; spacing: 8px; Label { text: "Ngoại lệ"; font-weight: 600; } TextEdit { text <=> root.exclusions; font-size: 15px; enabled: !root.running && !root.busy; } } }
+                }
+                HorizontalLayout { height: 42px; spacing: 9px; Muted { text: root.running ? "Ngắt kết nối để chỉnh sửa." : "Mỗi dòng một tên miền."; } Rectangle { horizontal-stretch: 1; } Action { text: "Mặc định"; enabled: !root.running && !root.busy; clicked => { root.reset(); } } Action { text: "Lưu"; primary: true; enabled: !root.running && !root.busy; clicked => { root.save(); } } }
+            }
+            if root.page == 2 : VerticalLayout { padding: 30px; spacing: 16px;
+                Label { text: "Kiểm tra"; font-size: 24px; font-weight: 700; height: 34px; }
+                Card { height: 116px; VerticalLayout { padding: 14px; spacing: 10px; HorizontalLayout { height: 42px; spacing: 9px; LineEdit { text <=> root.probe-host; font-size: 15px; placeholder-text: "example.com"; enabled: !root.probing; } Action { text: root.probing ? "Đang kiểm tra…" : "Kiểm tra HTTPS"; primary: true; enabled: !root.probing; clicked => { root.probe(); } } } Muted { text: root.probe-result; wrap: word-wrap; } } }
+                HorizontalLayout { height: 38px; Label { text: "Nhật ký"; font-weight: 600; } Rectangle { horizontal-stretch: 1; } Action { text: "Xuất"; clicked => { root.export-logs(); } } Action { text: "Xóa"; clicked => { root.clear-logs(); } } }
+                Rectangle { background: #121214; border-radius: 8px; border-width: 1px; border-color: Palette.border; ScrollView { viewport-width: self.width; Text { x: 13px; y: 12px; width: parent.width - 26px; text: root.logs; color: #c7c7cc; font-family: "Cascadia Mono"; font-size: 13px; wrap: word-wrap; } } }
+            }
+            if root.page == 3 : VerticalLayout { padding: 30px; spacing: 16px;
+                Label { text: "Cài đặt"; font-size: 24px; font-weight: 700; height: 34px; }
+                Card { height: 134px; VerticalLayout { padding: 16px; spacing: 14px; Toggle { text: "Mở ứng dụng cùng Windows"; checked <=> root.startup-enabled; toggled(value) => { root.startup-changed(value); } } HorizontalLayout { height: 42px; spacing: 9px; Action { text: "Ẩn xuống khay"; enabled: root.tray-available; clicked => { root.hide-to-tray(); } } Action { text: "Thoát"; clicked => { root.quit(); } } Rectangle { horizontal-stretch: 1; } } } }
+                Card { height: 126px; VerticalLayout { padding: 16px; spacing: 8px; Label { text: "Dữ liệu"; font-weight: 600; } Muted { text: root.data-path; wrap: word-wrap; } Rectangle { vertical-stretch: 1; } Action { text: "Mở thư mục"; clicked => { root.open-folder(); } } } }
+                Rectangle { vertical-stretch: 1; }
+            }
+        }
+    }
+    if root.notice != "" : Rectangle { x: 184px; y: parent.height - self.height - 18px; width: parent.width - 204px; height: max(54px, message.preferred-height + 24px); border-radius: 8px; border-width: 1px; border-color: root.notice-error ? #865a5e : #47688d; background: root.notice-error ? #39292c : #1d2d40;
+        HorizontalLayout { padding: 12px; spacing: 12px; message := Label { text: root.notice; font-size: 14px; wrap: word-wrap; color: #f0f1f5; } if root.notice-error : Action { text: "Ẩn"; clicked => { root.dismiss-notice(); } } }
+    }
+}

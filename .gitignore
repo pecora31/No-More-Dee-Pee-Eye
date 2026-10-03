@@ -1,0 +1,7 @@
+/target/
+/dist/
+/runtime/
+/artifacts/
+*.log
+/ui/fonts/PlusJakartaSans.ttf
+/ui/fonts/OFL.txt
