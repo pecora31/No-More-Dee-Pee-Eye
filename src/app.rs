@@ -59,6 +59,22 @@ fn notice(ui: &AppWindow, text: impl Into<slint::SharedString>, error: bool) {
     }
 }
 
+pub(crate) fn restore_window(ui: &AppWindow) {
+    ui.window().set_minimized(false);
+    let _ = ui.show();
+    ui.window().request_redraw();
+
+    // Winit may restore a minimized software-rendered window before its first
+    // paint request is processed. Queue a second paint once restoration has
+    // reached the event loop to avoid a blank client area.
+    let weak = ui.as_weak();
+    slint::Timer::single_shot(Duration::from_millis(50), move || {
+        if let Some(ui) = weak.upgrade() {
+            ui.window().request_redraw();
+        }
+    });
+}
+
 fn controller(rx: mpsc::Receiver<Request>, updates: mpsc::SyncSender<Update>) {
     let mut connection: Option<fs::File> = None;
     let mut alive = Arc::new(AtomicBool::new(false));
@@ -350,7 +366,7 @@ pub fn run(
         if let Some(ui) = weak.upgrade() {
             let output = export_dir.join("diagnostics.txt");
             let text = format!(
-                "No More Dee Pee Eye 0.1.0\nEngine bundle: {}\nPreset: {}\n{}\n\n{}\n",
+                "No More Dee Pee Eye 0.1.1\nEngine bundle: {}\nPreset: {}\n{}\n\n{}\n",
                 engine::REVISION,
                 ui.get_profile_name(),
                 ui.get_probe_result(),
@@ -389,20 +405,26 @@ pub fn run(
     let show_event = platform::show_event();
     let quit_event = platform::quit_event();
     let timer = slint::Timer::default();
+    let was_minimized = Rc::new(RefCell::new(ui.window().is_minimized()));
     let weak = ui.as_weak();
     let log_data = logs.clone();
+    let minimize_state = was_minimized.clone();
     timer.start(
         slint::TimerMode::Repeated,
         Duration::from_millis(100),
         move || {
             if let Some(ui) = weak.upgrade() {
                 if show_event.as_ref().is_some_and(platform::show_requested) {
-                    let _ = ui.show();
-                    ui.window().set_minimized(false);
+                    restore_window(&ui);
                 }
                 if quit_event.as_ref().is_some_and(platform::show_requested) {
                     let _ = slint::quit_event_loop();
                 }
+                let minimized = ui.window().is_minimized();
+                if *minimize_state.borrow() && !minimized {
+                    restore_window(&ui);
+                }
+                *minimize_state.borrow_mut() = minimized;
                 ui.set_profile_name(
                     PROFILE_NAMES
                         .get(ui.get_profile() as usize)

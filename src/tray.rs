@@ -17,14 +17,14 @@ pub fn create(ui: &AppWindow) -> Result<TrayIcon, Box<dyn std::error::Error>> {
         let weak = weak.clone();
         if event.id == open_id {
             let _ = weak.upgrade_in_event_loop(|ui| {
-                let _ = ui.show();
+                crate::app::restore_window(&ui);
             });
         } else if event.id == toggle_id {
             let _ = weak.upgrade_in_event_loop(|ui| {
                 if !ui.get_busy() && ui.get_engine_ready() {
                     ui.invoke_toggle();
                 }
-                let _ = ui.show();
+                crate::app::restore_window(&ui);
             });
         } else if event.id == quit_id {
             let _ = slint::quit_event_loop();
@@ -34,7 +34,7 @@ pub fn create(ui: &AppWindow) -> Result<TrayIcon, Box<dyn std::error::Error>> {
     TrayIconEvent::set_event_handler(Some(move |event| {
         if matches!(event, TrayIconEvent::DoubleClick { .. }) {
             let _ = weak.clone().upgrade_in_event_loop(|ui| {
-                let _ = ui.show();
+                crate::app::restore_window(&ui);
             });
         }
     }));
