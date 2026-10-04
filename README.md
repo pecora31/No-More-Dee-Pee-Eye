@@ -14,9 +14,9 @@ No More Dee Pee Eye does not change DNS, proxy, firewall, or IP settings. The cu
 
 ## Download and run
 
-Download and run `NoMoreDeePeeEye-0.1.3-windows-x64.exe` from the GitHub release. It contains the pinned Zapret2 runtime and prepares it locally on its first launch. A ZIP is also available for people who prefer a portable folder.
+Download and run `NoMoreDeePeeEye-0.1.4-windows-x64.exe` from the GitHub release. It contains the pinned Zapret2 runtime and prepares it locally on its first launch. A ZIP is also available for people who prefer a portable folder.
 
-1. Open **Configuration** and enter domains, one per line.
+1. New installations start with Steam domains. Open **Configuration** to add or change domains, one per line.
 2. Select a TLS profile and save it.
 3. Click **Connect** and accept the UAC prompt when Windows asks to start the engine helper.
 4. Use **Disconnect** or the tray menu to stop Zapret2.

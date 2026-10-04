@@ -24,9 +24,9 @@ impl Default for Settings {
         Self {
             schema: 1,
             profile: 0,
-            domains: "youtube.com\ngooglevideo.com\nytimg.com".into(),
+            domains: "steamcommunity.com\nsteampowered.com\nsteamstatic.com\nsteamcontent.com\nsteam-chat.com\nsteamserver.net".into(),
             exclusions: String::new(),
-            probe: "www.youtube.com".into(),
+            probe: "steamcommunity.com".into(),
         }
     }
 }

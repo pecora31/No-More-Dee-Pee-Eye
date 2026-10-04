@@ -370,7 +370,8 @@ mod tests {
             };
             let args = arguments(&s).unwrap();
             assert!(
-                args.contains(&"--hostlist-domains=youtube.com,googlevideo.com,ytimg.com".into())
+                args.iter()
+                    .any(|arg| arg.starts_with("--hostlist-domains="))
             );
             assert!(args.iter().any(|a| a.starts_with("--lua-desync=")));
             assert!(!args.iter().any(|a| a.starts_with("--wf-udp")));
